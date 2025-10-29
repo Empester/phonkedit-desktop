@@ -292,19 +292,28 @@ VK_ESCAPE = 0x1B
 VK_P = 0x50
 
 def poll_clicks():
-    user32 = ctypes.windll.user32
-    prev_left = False
-    prev_right = False
-    while not STOP_EVENT.is_set():
-        left = (user32.GetAsyncKeyState(VK_LBUTTON) & 0x8000) != 0
-        right = (user32.GetAsyncKeyState(VK_RBUTTON) & 0x8000) != 0
-        if left and not prev_left:
-            safe_trigger()
-        if right and not prev_right:
-            safe_trigger()
-        prev_left = left
-        prev_right = right
-        time.sleep(0.02)
+    system = platform.system()
+    
+    if system == "Windows":
+        user32 = ctypes.windll.user32
+        # Windows-specific click polling code
+        while True:
+            # Your Windows implementation
+            pass
+    elif system == "Linux":
+        # Linux alternative using Xlib or other methods
+        try:
+            from Xlib import X, display
+            d = display.Display()
+            # Linux implementation
+        except ImportError:
+            print("Xlib not installed. Install with: pip install python-xlib")
+            return
+    elif system == "Darwin":  # macOS
+        # macOS implementation
+        pass
+    else:
+        print(f"Unsupported platform: {system}")
 
 def poll_keys():
     """Poll for key press rising edges across virtual keys and trigger rarely for typing.
