@@ -16,6 +16,7 @@ import tkinter as tk
 from PIL import ImageTk
 from queue import Queue, Empty
 import pygame
+import platforms
 
 BASE_DIR = Path(__file__).resolve().parent
 ASSETS_DIR = BASE_DIR / "assets"
@@ -291,29 +292,66 @@ VK_TAB = 0x09
 VK_ESCAPE = 0x1B
 VK_P = 0x50
 
+import platform
+
 def poll_clicks():
-    system = platform.system()
+    """Poll for mouse clicks - cross-platform version"""
+    if platform.system() != "Windows":
+        # On non-Windows systems, rely on pygame events instead
+        return
     
-    if system == "Windows":
+    try:
         user32 = ctypes.windll.user32
-        # Windows-specific click polling code
+        last_state = user32.GetKeyState(0x01)
+        
         while True:
-            # Your Windows implementation
-            pass
-    elif system == "Linux":
-        # Linux alternative using Xlib or other methods
-        try:
-            from Xlib import X, display
-            d = display.Display()
-            # Linux implementation
-        except ImportError:
-            print("Xlib not installed. Install with: pip install python-xlib")
-            return
-    elif system == "Darwin":  # macOS
-        # macOS implementation
-        pass
-    else:
-        print(f"Unsupported platform: {system}")
+            time.sleep(0.01)
+            state = user32.GetKeyState(0x01)
+            
+            if state != last_state:
+                last_state = state
+                
+                if state < 0:  # Button pressed
+                    mouse_x, mouse_y = pygame.mouse.get_pos()
+                    handle_click(mouse_x, mouse_y)
+    except Exception as e:
+        print(f"Click polling error: {e}")
+
+def poll_keys():
+    """Poll for key presses - cross-platform version"""
+    if platform.system() != "Windows":
+        # On non-Windows systems, rely on pygame events instead
+        return
+    
+    try:
+        user32 = ctypes.windll.user32
+        last_states = {}
+        
+        # VK codes for keys we care about
+        keys_to_monitor = {
+            0x20: pygame.K_SPACE,  # Space
+            0x08: pygame.K_BACKSPACE,  # Backspace
+            0x0D: pygame.K_RETURN,  # Enter
+        }
+        
+        while True:
+            time.sleep(0.01)
+            
+            for vk_code, pygame_key in keys_to_monitor.items():
+                state = user32.GetKeyState(vk_code)
+                
+                if vk_code not in last_states:
+                    last_states[vk_code] = state
+                    continue
+                
+                if state != last_states[vk_code] and state < 0:
+                    # Key was pressed
+                    event = pygame.event.Event(pygame.KEYDOWN, key=pygame_key)
+                    pygame.event.post(event)
+                
+                last_states[vk_code] = state
+    except Exception as e:
+        print(f"Key polling error: {e}")
 
 def poll_keys():
     """Poll for key press rising edges across virtual keys and trigger rarely for typing.
